@@ -54,6 +54,231 @@ graph TD
 
 ---
 
+## Критерии приёмки — Milestone 1
+
+> Раздел описывает **как именно проверить** каждый критерий: что запустить, что должно вернуться, как убедиться что пункт выполнен.
+
+### ✅ 1. Развёрнут модульный каркас: FastAPI + B2C Core + PostgreSQL + Alembic
+
+**Проверка структуры проекта:**
+```bash
+ls app/
+# Ожидается: main.py  config.py  db/  repositories/  services/  routers/  bot/  utils/
+
+ls app/db/models/
+# Ожидается: b2b_account.py  group.py  user.py  card.py  code_3ds.py
+
+ls app/services/
+# Ожидается: crypto_service.py  auth_service.py  arqen_client.py
+
+ls alembic/versions/
+# Ожидается: 001_initial.py
+```
+
+**Проверка запуска и применения миграций:**
+```bash
+docker-compose up --build -d
+
+# Убедиться что оба контейнера работают
+docker-compose ps
+# Ожидается: STATUS = Up (healthy) для db и app
+
+# Применить миграции
+docker-compose exec app alembic upgrade head
+# Ожидается: INFO [alembic.runtime.migration] Running upgrade -> 001_initial, Initial migration
+
+# Проверить созданные таблицы
+docker-compose exec db psql -U postgres -d b2c_db -c "\dt"
+# Ожидается: b2b_accounts, groups, users, cards, codes_3ds
+```
+
+**Проверка что FastAPI запустился:**
+```bash
+curl http://localhost:8000/docs
+# Ожидается: HTTP 200, страница Swagger UI
+```
+
+---
+
+### ✅ 2. Реализован Admin API с защитой X-Admin-Token
+
+**Проверка что без токена возвращается 403:**
+```bash
+curl -i http://localhost:8000/api/v1/admin/accounts
+# Ожидается: HTTP/1.1 403 Forbidden
+# Body: {"detail":"Forbidden"}
+```
+
+**Проверка что с неверным токеном возвращается 403:**
+```bash
+curl -i http://localhost:8000/api/v1/admin/accounts \
+  -H "X-Admin-Token: wrong_token"
+# Ожидается: HTTP/1.1 403 Forbidden
+```
+
+**Проверка что с верным токеном возвращается 200:**
+```bash
+curl -i http://localhost:8000/api/v1/admin/accounts \
+  -H "X-Admin-Token: <значение ADMIN_TOKEN из .env>"
+# Ожидается: HTTP/1.1 200 OK
+# Body: {"total":0,"used":0,"free":0,"accounts":[]}
+```
+
+**Проверка через тесты:**
+```bash
+pytest tests/test_admin_api.py -v -k "forbidden or token"
+# Ожидается: все тесты на 403 зелёные
+```
+
+---
+
+### ✅ 3. Работает загрузка B2B-профилей с валидацией через Arqen
+
+**Загрузка валидного профиля (должен пройти проверку в Arqen Sandbox):**
+```bash
+curl -X POST http://localhost:8000/api/v1/admin/accounts \
+  -H "X-Admin-Token: <ADMIN_TOKEN>" \
+  -H "Content-Type: application/json" \
+  -d '[{
+    "client_id": "<реальный client_id из Arqen Sandbox>",
+    "key_id": "<реальный key_id>",
+    "private_key": "-----BEGIN RSA PRIVATE KEY-----\n..."
+  }]'
+# Ожидается: {"added": 1, "errors": []}
+```
+
+**Загрузка невалидного профиля (Arqen отклонит):**
+```bash
+curl -X POST http://localhost:8000/api/v1/admin/accounts \
+  -H "X-Admin-Token: <ADMIN_TOKEN>" \
+  -H "Content-Type: application/json" \
+  -d '[{"client_id": "fake_id", "key_id": "fake_key", "private_key": "invalid"}]'
+# Ожидается: {"added": 0, "errors": [{"client_id": "fake_id", "reason": "..."}]}
+```
+
+**Проверить что профиль сохранён в БД:**
+```bash
+curl http://localhost:8000/api/v1/admin/accounts \
+  -H "X-Admin-Token: <ADMIN_TOKEN>"
+# Ожидается: {"total": 1, "used": 0, "free": 1, "accounts": [{...}]}
+```
+
+**Проверить через БД напрямую:**
+```bash
+docker-compose exec db psql -U postgres -d b2c_db \
+  -c "SELECT client_id, is_assigned, token_expires_at FROM b2b_accounts;"
+# Ожидается: строка с client_id, is_assigned=false, token_expires_at заполнен
+```
+
+---
+
+### ✅ 4. Работает получение access token от Arqen B2B Platform (OAuth2 JWT Bearer)
+
+**Проверка через тест (реальный запрос к Arqen Sandbox):**
+```bash
+pytest tests/test_auth_service.py -v -k "fetch_access_token"
+# Ожидается: тест проходит — токен получен, тип str, не пустой
+```
+
+**Проверка что токен сохранён в БД после загрузки профиля:**
+```bash
+docker-compose exec db psql -U postgres -d b2c_db \
+  -c "SELECT client_id, token_expires_at FROM b2b_accounts WHERE token_expires_at IS NOT NULL;"
+# Ожидается: строка с заполненным token_expires_at (дата в будущем)
+# access_token_encrypted тоже заполнен (зашифрованная строка, не NULL)
+```
+
+**Проверка что токен зашифрован (не хранится в открытом виде):**
+```bash
+docker-compose exec db psql -U postgres -d b2c_db \
+  -c "SELECT access_token_encrypted FROM b2b_accounts LIMIT 1;"
+# Ожидается: длинная base64-строка, НЕ начинающаяся с "eyJ" (JWT в открытом виде)
+```
+
+---
+
+### ✅ 5. Реализованы асинхронные функции в B2C Core: баланс, выпуск карты, список карт, транзакции
+
+**Запустить полный набор тестов:**
+```bash
+pytest tests/ -v
+# Ожидается: 114 passed, 0 failed
+```
+
+**По каждому модулю:**
+```bash
+# Криптосервис (encrypt/decrypt)
+pytest tests/test_crypto_service.py -v
+# Ожидается: 10 passed
+
+# Arqen Client (get_balance, issue_card, list_cards, get_card, list_*_transactions)
+pytest tests/test_arqen_client.py -v
+# Ожидается: 20 passed — все методы клиента покрыты
+
+# Auth Service (JWT, token cache, JWE decrypt)
+pytest tests/test_auth_service.py -v
+# Ожидается: 20 passed
+```
+
+**Проверка баланса через Arqen Sandbox (E2E):**
+```bash
+# В python-консоли внутри контейнера:
+docker-compose exec app python -c "
+import asyncio
+from app.services.arqen_client import ArqenClient
+from app.config import settings
+
+async def check():
+    client = ArqenClient(base_url=settings.ARQEN_BASE_URL)
+    # Подставить реальный account_id и access_token
+    result = await client.get_balance('<account_id>', '<access_token>')
+    print(result)
+
+asyncio.run(check())
+"
+# Ожидается: {'balance': ..., 'currency': 'USD', 'account_id': '...'}
+```
+
+---
+
+### ✅ 6. Всё запускается через docker-compose
+
+**Запуск с нуля (clean start):**
+```bash
+# Удалить старые контейнеры и volumes
+docker-compose down -v
+
+# Поднять стек заново
+docker-compose up --build
+# Ожидается в логах:
+# db       | database system is ready to accept connections
+# app      | INFO: Application startup complete.
+# app      | INFO: Uvicorn running on http://0.0.0.0:8000
+```
+
+**Проверка статуса контейнеров:**
+```bash
+docker-compose ps
+# Ожидается:
+# NAME        SERVICE   STATUS          PORTS
+# b2c-db      db        Up (healthy)    5432/tcp
+# b2c-app     app       Up              0.0.0.0:8000->8000/tcp
+```
+
+**Проверка автоматического применения миграций:**
+```bash
+docker-compose logs app | grep -i "alembic\|migration"
+# Ожидается: строка с "Running upgrade -> 001_initial"
+```
+
+**Проверка healthcheck БД:**
+```bash
+docker inspect b2c-db --format='{{.State.Health.Status}}'
+# Ожидается: healthy
+```
+
+---
+
 ## Быстрый старт
 
 ### 1. Настройка окружения
