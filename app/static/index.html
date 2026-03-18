@@ -1,0 +1,698 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>B2C Virtual Cards — API Dashboard</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:        #0a0d14;
+      --bg2:       #0f1320;
+      --bg3:       #151b2e;
+      --border:    rgba(99,120,255,0.18);
+      --accent:    #6378ff;
+      --accent2:   #a78bfa;
+      --green:     #34d399;
+      --yellow:    #fbbf24;
+      --red:       #f87171;
+      --text:      #e2e8f0;
+      --muted:     #64748b;
+      --card-glow: rgba(99,120,255,0.07);
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Inter', sans-serif;
+      min-height: 100vh;
+      line-height: 1.6;
+    }
+
+    /* ─── BACKGROUND GRID ─── */
+    body::before {
+      content: '';
+      position: fixed; inset: 0;
+      background-image:
+        linear-gradient(rgba(99,120,255,0.04) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(99,120,255,0.04) 1px, transparent 1px);
+      background-size: 40px 40px;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* ─── HERO GRADIENT BLOBS ─── */
+    .blob {
+      position: fixed;
+      border-radius: 50%;
+      filter: blur(120px);
+      pointer-events: none;
+      z-index: 0;
+      opacity: 0.35;
+    }
+    .blob-1 { width: 600px; height: 600px; top: -200px; left: -150px; background: radial-gradient(circle, #6378ff 0%, transparent 70%); }
+    .blob-2 { width: 500px; height: 500px; bottom: -100px; right: -100px; background: radial-gradient(circle, #a78bfa 0%, transparent 70%); }
+    .blob-3 { width: 300px; height: 300px; top: 40%; left: 60%; background: radial-gradient(circle, #34d399 0%, transparent 70%); opacity: 0.15; }
+
+    /* ─── LAYOUT ─── */
+    .container {
+      position: relative; z-index: 1;
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 0 24px;
+    }
+
+    /* ─── HEADER ─── */
+    header {
+      position: sticky; top: 0; z-index: 100;
+      background: rgba(10, 13, 20, 0.8);
+      backdrop-filter: blur(16px);
+      border-bottom: 1px solid var(--border);
+    }
+    .header-inner {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 14px 24px;
+      max-width: 1100px; margin: 0 auto;
+    }
+    .logo-row { display: flex; align-items: center; gap: 12px; }
+    .logo-img {
+      width: 40px; height: 40px;
+      border-radius: 10px;
+      object-fit: cover;
+      border: 1px solid var(--border);
+    }
+    .logo-text { font-size: 1rem; font-weight: 600; letter-spacing: -0.02em; }
+    .logo-text span { color: var(--accent2); }
+    .badge-sandbox {
+      font-size: 0.65rem; font-weight: 600;
+      background: rgba(251,191,36,0.15);
+      color: var(--yellow);
+      border: 1px solid rgba(251,191,36,0.3);
+      border-radius: 20px;
+      padding: 2px 10px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+    .nav-links { display: flex; gap: 8px; }
+    .nav-links a {
+      color: var(--muted);
+      text-decoration: none;
+      font-size: 0.85rem;
+      padding: 6px 14px;
+      border-radius: 8px;
+      transition: all 0.2s;
+      border: 1px solid transparent;
+    }
+    .nav-links a:hover {
+      color: var(--text);
+      background: var(--bg3);
+      border-color: var(--border);
+    }
+    .nav-links a.primary {
+      background: var(--accent);
+      color: #fff;
+      border-color: var(--accent);
+    }
+    .nav-links a.primary:hover { background: #7389ff; border-color: #7389ff; }
+
+    /* ─── HERO ─── */
+    .hero {
+      padding: 80px 0 64px;
+      text-align: center;
+    }
+    .hero-logo {
+      width: 160px; height: 160px;
+      border-radius: 28px;
+      object-fit: cover;
+      border: 2px solid var(--border);
+      box-shadow: 0 0 60px rgba(99,120,255,0.3), 0 0 120px rgba(99,120,255,0.1);
+      margin-bottom: 32px;
+      animation: float 6s ease-in-out infinite;
+    }
+    @keyframes float {
+      0%, 100% { transform: translateY(0px); }
+      50% { transform: translateY(-10px); }
+    }
+    .hero h1 {
+      font-size: clamp(2rem, 5vw, 3.2rem);
+      font-weight: 700;
+      letter-spacing: -0.04em;
+      line-height: 1.1;
+      margin-bottom: 16px;
+    }
+    .hero h1 .gradient {
+      background: linear-gradient(135deg, #6378ff, #a78bfa, #34d399);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .hero-desc {
+      color: var(--muted);
+      font-size: 1.05rem;
+      max-width: 560px;
+      margin: 0 auto 36px;
+    }
+    .hero-badges {
+      display: flex; flex-wrap: wrap; justify-content: center; gap: 10px;
+      margin-bottom: 40px;
+    }
+    .chip {
+      display: inline-flex; align-items: center; gap: 6px;
+      font-size: 0.78rem; font-weight: 500;
+      padding: 5px 14px;
+      border-radius: 20px;
+      border: 1px solid var(--border);
+      background: var(--bg2);
+      color: var(--muted);
+    }
+    .chip .dot { width: 6px; height: 6px; border-radius: 50%; }
+    .chip-green .dot { background: var(--green); box-shadow: 0 0 6px var(--green); }
+    .chip-blue  .dot { background: var(--accent); box-shadow: 0 0 6px var(--accent); }
+    .chip-purple .dot { background: var(--accent2); box-shadow: 0 0 6px var(--accent2); }
+
+    .status-pill {
+      display: inline-flex; align-items: center; gap: 8px;
+      background: rgba(52,211,153,0.1);
+      border: 1px solid rgba(52,211,153,0.25);
+      border-radius: 100px;
+      padding: 8px 20px;
+      font-size: 0.85rem; font-weight: 500;
+      color: var(--green);
+    }
+    .status-dot {
+      width: 8px; height: 8px; border-radius: 50%;
+      background: var(--green);
+      box-shadow: 0 0 8px var(--green);
+      animation: pulse 2s ease-in-out infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.6; transform: scale(0.85); }
+    }
+
+    /* ─── SECTION TITLE ─── */
+    .section-title {
+      font-size: 0.7rem; font-weight: 600;
+      letter-spacing: 0.12em; text-transform: uppercase;
+      color: var(--accent);
+      margin-bottom: 20px;
+    }
+
+    /* ─── API ENDPOINTS ─── */
+    .section { margin-bottom: 56px; }
+    .section > h2 {
+      font-size: 1.3rem; font-weight: 600;
+      letter-spacing: -0.02em;
+      margin-bottom: 16px;
+      display: flex; align-items: center; gap: 10px;
+    }
+    .section > h2 .icon {
+      font-size: 1.1rem;
+      background: var(--bg3);
+      padding: 6px 8px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+    }
+
+    .endpoints { display: flex; flex-direction: column; gap: 10px; }
+    .endpoint {
+      display: grid;
+      grid-template-columns: 80px 1fr auto;
+      align-items: center;
+      gap: 14px;
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 14px 18px;
+      transition: all 0.2s;
+      text-decoration: none;
+      color: inherit;
+    }
+    .endpoint:hover {
+      border-color: rgba(99,120,255,0.4);
+      background: var(--bg3);
+      box-shadow: 0 0 24px var(--card-glow);
+      transform: translateY(-1px);
+    }
+    .method {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.72rem; font-weight: 500;
+      padding: 4px 10px;
+      border-radius: 6px;
+      text-align: center;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+    .method-get  { background: rgba(52,211,153,0.15); color: var(--green); border: 1px solid rgba(52,211,153,0.25); }
+    .method-post { background: rgba(99,120,255,0.15); color: var(--accent); border: 1px solid rgba(99,120,255,0.25); }
+    .endpoint-path {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.88rem;
+    }
+    .endpoint-path .base { color: var(--muted); }
+    .endpoint-path .route { color: var(--text); }
+    .endpoint-desc { font-size: 0.78rem; color: var(--muted); font-family: 'Inter', sans-serif; }
+    .endpoint-meta { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
+    .lock-badge {
+      font-size: 0.68rem; font-weight: 500;
+      background: rgba(251,191,36,0.12);
+      color: var(--yellow);
+      border: 1px solid rgba(251,191,36,0.2);
+      border-radius: 6px;
+      padding: 2px 8px;
+    }
+    .open-badge {
+      font-size: 0.68rem; font-weight: 500;
+      background: rgba(52,211,153,0.1);
+      color: var(--green);
+      border: 1px solid rgba(52,211,153,0.2);
+      border-radius: 6px;
+      padding: 2px 8px;
+    }
+
+    /* ─── STACK CARDS ─── */
+    .stack-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 12px;
+    }
+    .stack-card {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 16px 18px;
+      transition: all 0.2s;
+    }
+    .stack-card:hover {
+      border-color: rgba(99,120,255,0.35);
+      background: var(--bg3);
+    }
+    .stack-card-label {
+      font-size: 0.68rem; font-weight: 600;
+      text-transform: uppercase; letter-spacing: 0.1em;
+      color: var(--muted);
+      margin-bottom: 6px;
+    }
+    .stack-card-value {
+      font-size: 0.92rem; font-weight: 600;
+      color: var(--text);
+    }
+    .stack-card-value .tag {
+      display: inline-block;
+      font-size: 0.7rem; font-weight: 400;
+      color: var(--accent2);
+      margin-left: 4px;
+    }
+
+    /* ─── QUICK START ─── */
+    .code-block {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+    .code-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 10px 16px;
+      background: var(--bg3);
+      border-bottom: 1px solid var(--border);
+    }
+    .code-title {
+      font-size: 0.75rem; font-weight: 500;
+      color: var(--muted);
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .traffic-lights { display: flex; gap: 6px; }
+    .traffic-lights span { width: 10px; height: 10px; border-radius: 50%; }
+    .tl-red    { background: #f87171; }
+    .tl-yellow { background: #fbbf24; }
+    .tl-green  { background: #34d399; }
+    .code-body {
+      padding: 18px 20px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.82rem;
+      line-height: 1.8;
+      overflow-x: auto;
+    }
+    .cmd { color: var(--accent2); }
+    .cmt { color: var(--muted); }
+    .str { color: var(--green); }
+    .key { color: var(--accent); }
+
+    /* ─── SECURITY GRID ─── */
+    .security-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      gap: 12px;
+    }
+    .sec-item {
+      display: flex; gap: 12px; align-items: flex-start;
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 14px 16px;
+    }
+    .sec-icon {
+      font-size: 1.1rem;
+      flex-shrink: 0;
+      margin-top: 2px;
+    }
+    .sec-title { font-size: 0.85rem; font-weight: 600; margin-bottom: 2px; }
+    .sec-desc  { font-size: 0.75rem; color: var(--muted); line-height: 1.5; }
+
+    /* ─── STATS ─── */
+    .stats-row {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+      margin-bottom: 56px;
+    }
+    @media (max-width: 640px) { .stats-row { grid-template-columns: repeat(2, 1fr); } }
+    .stat-card {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 20px;
+      text-align: center;
+    }
+    .stat-number {
+      font-size: 1.8rem; font-weight: 700;
+      letter-spacing: -0.04em;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .stat-label { font-size: 0.75rem; color: var(--muted); margin-top: 4px; }
+
+    /* ─── FOOTER ─── */
+    footer {
+      position: relative; z-index: 1;
+      border-top: 1px solid var(--border);
+      padding: 28px 0;
+      margin-top: 40px;
+      text-align: center;
+      color: var(--muted);
+      font-size: 0.8rem;
+    }
+    footer a { color: var(--accent2); text-decoration: none; }
+    footer a:hover { text-decoration: underline; }
+
+    /* ─── DIVIDER ─── */
+    .divider {
+      height: 1px;
+      background: linear-gradient(90deg, transparent, var(--border), transparent);
+      margin: 48px 0;
+    }
+  </style>
+</head>
+<body>
+
+<div class="blob blob-1"></div>
+<div class="blob blob-2"></div>
+<div class="blob blob-3"></div>
+
+<!-- HEADER -->
+<header>
+  <div class="header-inner">
+    <div class="logo-row">
+      <img src="/static/logo.png" alt="Logo" class="logo-img" />
+      <span class="logo-text">B2C <span>Cards</span></span>
+      <span class="badge-sandbox">Sandbox</span>
+    </div>
+    <nav class="nav-links">
+      <a href="/docs">Swagger UI</a>
+      <a href="/redoc">ReDoc</a>
+      <a href="/health">Health</a>
+      <a href="/docs" class="primary">API Docs →</a>
+    </nav>
+  </div>
+</header>
+
+<!-- HERO -->
+<div class="container">
+  <section class="hero">
+    <img src="/static/logo.png" alt="B2C Virtual Cards Bot" class="hero-logo" />
+    <h1>
+      <span class="gradient">Virtual Cards</span><br />Telegram Bot API
+    </h1>
+    <p class="hero-desc">
+      B2C-интерфейс для выпуска и управления виртуальными картами VISA/Mastercard
+      на базе платформы <strong>Arqen B2B Platform</strong>
+    </p>
+    <div class="hero-badges">
+      <span class="chip chip-green"><span class="dot"></span>FastAPI 0.115</span>
+      <span class="chip chip-blue"><span class="dot"></span>Python 3.11+</span>
+      <span class="chip chip-purple"><span class="dot"></span>Aiogram 3.x</span>
+      <span class="chip chip-green"><span class="dot"></span>PostgreSQL</span>
+      <span class="chip chip-blue"><span class="dot"></span>AES-256-GCM</span>
+      <span class="chip chip-purple"><span class="dot"></span>JWE RSA-OAEP-256</span>
+    </div>
+    <div class="status-pill">
+      <div class="status-dot"></div>
+      Сервис запущен и работает
+    </div>
+  </section>
+
+  <!-- STATS -->
+  <div class="stats-row">
+    <div class="stat-card">
+      <div class="stat-number">114</div>
+      <div class="stat-label">Тестов пройдено</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-number">9</div>
+      <div class="stat-label">Методов Arqen API</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-number">5</div>
+      <div class="stat-label">Таблиц в БД</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-number">2</div>
+      <div class="stat-label">REST Эндпоинта</div>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- ENDPOINTS -->
+  <section class="section">
+    <p class="section-title">// API Endpoints</p>
+    <h2><span class="icon">⚡</span> Доступные конечные точки</h2>
+    <div class="endpoints">
+
+      <a class="endpoint" href="/health">
+        <span class="method method-get">GET</span>
+        <div>
+          <div class="endpoint-path"><span class="route">/health</span></div>
+          <div class="endpoint-desc">Проверка состояния сервиса</div>
+        </div>
+        <div class="endpoint-meta"><span class="open-badge">Open</span></div>
+      </a>
+
+      <a class="endpoint" href="/docs">
+        <span class="method method-get">GET</span>
+        <div>
+          <div class="endpoint-path"><span class="route">/docs</span></div>
+          <div class="endpoint-desc">Swagger UI — интерактивная документация API</div>
+        </div>
+        <div class="endpoint-meta"><span class="open-badge">Open</span></div>
+      </a>
+
+      <a class="endpoint" href="/redoc">
+        <span class="method method-get">GET</span>
+        <div>
+          <div class="endpoint-path"><span class="route">/redoc</span></div>
+          <div class="endpoint-desc">ReDoc — красивая документация API</div>
+        </div>
+        <div class="endpoint-meta"><span class="open-badge">Open</span></div>
+      </a>
+
+      <a class="endpoint" href="/openapi.json">
+        <span class="method method-get">GET</span>
+        <div>
+          <div class="endpoint-path"><span class="route">/openapi.json</span></div>
+          <div class="endpoint-desc">OpenAPI 3.0 схема в формате JSON</div>
+        </div>
+        <div class="endpoint-meta"><span class="open-badge">Open</span></div>
+      </a>
+
+      <div class="endpoint" style="cursor:default;">
+        <span class="method method-post">POST</span>
+        <div>
+          <div class="endpoint-path">
+            <span class="base">/api/v1</span><span class="route">/admin/accounts</span>
+          </div>
+          <div class="endpoint-desc">Массовая загрузка B2B-профилей с валидацией через Arqen Sandbox</div>
+        </div>
+        <div class="endpoint-meta"><span class="lock-badge">🔑 X-Admin-Token</span></div>
+      </div>
+
+      <div class="endpoint" style="cursor:default;">
+        <span class="method method-get">GET</span>
+        <div>
+          <div class="endpoint-path">
+            <span class="base">/api/v1</span><span class="route">/admin/accounts</span>
+          </div>
+          <div class="endpoint-desc">Список B2B-профилей: total / used / free + фильтр по is_assigned</div>
+        </div>
+        <div class="endpoint-meta"><span class="lock-badge">🔑 X-Admin-Token</span></div>
+      </div>
+
+    </div>
+  </section>
+
+  <div class="divider"></div>
+
+  <!-- QUICK START -->
+  <section class="section">
+    <p class="section-title">// Quick Start</p>
+    <h2><span class="icon">🚀</span> Быстрый старт</h2>
+    <div class="code-block">
+      <div class="code-header">
+        <div class="traffic-lights">
+          <span class="tl-red"></span>
+          <span class="tl-yellow"></span>
+          <span class="tl-green"></span>
+        </div>
+        <span class="code-title">bash</span>
+      </div>
+      <div class="code-body">
+<span class="cmt"># 1. Настройка окружения</span><br/>
+<span class="cmd">cp</span> <span class="str">.env.example .env</span><br/>
+<span class="cmt"># Заполнить: DATABASE_URL, MASTER_KEY (32 байта), ADMIN_TOKEN, BOT_TOKEN, ARQEN_BASE_URL</span><br/>
+<br/>
+<span class="cmt"># 2. Запуск стека</span><br/>
+<span class="cmd">docker-compose up</span> <span class="key">--build -d</span><br/>
+<br/>
+<span class="cmt"># 3. Применить миграции</span><br/>
+<span class="cmd">docker-compose exec</span> app alembic upgrade head<br/>
+<br/>
+<span class="cmt"># 4. Проверка Admin API</span><br/>
+<span class="cmd">curl</span> <span class="str">http://localhost:8000/api/v1/admin/accounts</span> \<br/>
+&nbsp;&nbsp;<span class="key">-H</span> <span class="str">"X-Admin-Token: your_admin_token"</span><br/>
+<span class="cmt"># → {"total": 0, "used": 0, "free": 0, "accounts": []}</span>
+      </div>
+    </div>
+  </section>
+
+  <div class="divider"></div>
+
+  <!-- TECH STACK -->
+  <section class="section">
+    <p class="section-title">// Tech Stack</p>
+    <h2><span class="icon">🛠</span> Стек технологий</h2>
+    <div class="stack-grid">
+      <div class="stack-card">
+        <div class="stack-card-label">Language</div>
+        <div class="stack-card-value">Python<span class="tag">3.11+</span></div>
+      </div>
+      <div class="stack-card">
+        <div class="stack-card-label">REST API</div>
+        <div class="stack-card-value">FastAPI<span class="tag">+ Uvicorn</span></div>
+      </div>
+      <div class="stack-card">
+        <div class="stack-card-label">Telegram Bot</div>
+        <div class="stack-card-value">Aiogram<span class="tag">3.x</span></div>
+      </div>
+      <div class="stack-card">
+        <div class="stack-card-label">Database</div>
+        <div class="stack-card-value">PostgreSQL<span class="tag">+ Alembic</span></div>
+      </div>
+      <div class="stack-card">
+        <div class="stack-card-label">ORM</div>
+        <div class="stack-card-value">SQLAlchemy<span class="tag">async</span></div>
+      </div>
+      <div class="stack-card">
+        <div class="stack-card-label">HTTP Client</div>
+        <div class="stack-card-value">httpx<span class="tag">async</span></div>
+      </div>
+      <div class="stack-card">
+        <div class="stack-card-label">Crypto (at rest)</div>
+        <div class="stack-card-value">AES-256-GCM</div>
+      </div>
+      <div class="stack-card">
+        <div class="stack-card-label">Auth</div>
+        <div class="stack-card-value">JWT RS256<span class="tag">+ JWE</span></div>
+      </div>
+      <div class="stack-card">
+        <div class="stack-card-label">Container</div>
+        <div class="stack-card-value">Docker<span class="tag">Compose</span></div>
+      </div>
+    </div>
+  </section>
+
+  <div class="divider"></div>
+
+  <!-- SECURITY -->
+  <section class="section">
+    <p class="section-title">// Security</p>
+    <h2><span class="icon">🔒</span> Безопасность</h2>
+    <div class="security-grid">
+      <div class="sec-item">
+        <div class="sec-icon">🔐</div>
+        <div>
+          <div class="sec-title">Encrypted at Rest</div>
+          <div class="sec-desc">RSA private keys и access_token хранятся зашифрованными (AES-256-GCM)</div>
+        </div>
+      </div>
+      <div class="sec-item">
+        <div class="sec-icon">🎲</div>
+        <div>
+          <div class="sec-title">Уникальный Nonce</div>
+          <div class="sec-desc">Каждый вызов encrypt() генерирует новый 12-байтный nonce — семантически безопасно</div>
+        </div>
+      </div>
+      <div class="sec-item">
+        <div class="sec-icon">⏱</div>
+        <div>
+          <div class="sec-title">Timing-Safe Compare</div>
+          <div class="sec-desc">Admin token сравнивается через secrets.compare_digest() — защита от timing attacks</div>
+        </div>
+      </div>
+      <div class="sec-item">
+        <div class="sec-icon">📦</div>
+        <div>
+          <div class="sec-title">JWE Card Details</div>
+          <div class="sec-desc">PAN/CVV/Expiry передаются от Arqen в зашифрованном JWE (RSA-OAEP-256 + A256GCM)</div>
+        </div>
+      </div>
+      <div class="sec-item">
+        <div class="sec-icon">🏷</div>
+        <div>
+          <div class="sec-title">JWT TTL 5 минут</div>
+          <div class="sec-desc">Assertion JWT живёт 5 минут, jti уникален для каждого запроса</div>
+        </div>
+      </div>
+      <div class="sec-item">
+        <div class="sec-icon">🌍</div>
+        <div>
+          <div class="sec-title">Sandbox Only</div>
+          <div class="sec-desc">Вся разработка и тестирование ведётся в изолированном Arqen Sandbox</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<!-- FOOTER -->
+<footer>
+  <div class="container">
+    <p>
+      <strong>B2C Virtual Cards Bot</strong> — Arqen B2B Platform Integration &nbsp;·&nbsp;
+      <a href="/docs">API Docs</a> &nbsp;·&nbsp;
+      <a href="/redoc">ReDoc</a> &nbsp;·&nbsp;
+      <a href="/health">Health Check</a>
+    </p>
+    <p style="margin-top: 8px;">Python 3.11 · FastAPI · Aiogram 3.x · PostgreSQL · Docker</p>
+  </div>
+</footer>
+
+</body>
+</html>

@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Health — B2C Cards API</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #0a0d14; --bg2: #0f1320; --bg3: #151b2e;
+      --border: rgba(99,120,255,0.18);
+      --accent: #6378ff; --accent2: #a78bfa;
+      --green: #34d399; --yellow: #fbbf24; --red: #f87171;
+      --text: #e2e8f0; --muted: #64748b;
+    }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Inter', sans-serif;
+      min-height: 100vh;
+      display: flex; flex-direction: column;
+    }
+    body::before {
+      content: '';
+      position: fixed; inset: 0;
+      background-image:
+        linear-gradient(rgba(99,120,255,0.04) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(99,120,255,0.04) 1px, transparent 1px);
+      background-size: 40px 40px;
+      pointer-events: none; z-index: 0;
+    }
+    .blob {
+      position: fixed; border-radius: 50%;
+      filter: blur(120px); pointer-events: none; z-index: 0;
+    }
+    .blob-1 { width: 500px; height: 500px; top: -150px; left: -100px; background: radial-gradient(circle, #6378ff 0%, transparent 70%); opacity: 0.3; }
+    .blob-2 { width: 400px; height: 400px; bottom: -100px; right: -100px; background: radial-gradient(circle, #34d399 0%, transparent 70%); opacity: 0.2; }
+
+    /* HOME BUTTON */
+    .home-btn {
+      position: fixed; top: 20px; left: 24px; z-index: 200;
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 8px 16px;
+      background: rgba(10,13,20,0.85);
+      backdrop-filter: blur(12px);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      color: var(--muted);
+      text-decoration: none;
+      font-size: 0.82rem; font-weight: 500;
+      transition: all 0.2s;
+    }
+    .home-btn:hover { color: var(--text); border-color: rgba(99,120,255,0.4); background: var(--bg3); }
+    .home-btn svg { width: 14px; height: 14px; }
+
+    .main {
+      position: relative; z-index: 1;
+      flex: 1;
+      display: flex; align-items: center; justify-content: center;
+      padding: 60px 24px;
+    }
+    .card {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 48px 56px;
+      text-align: center;
+      max-width: 480px; width: 100%;
+      box-shadow: 0 0 60px rgba(99,120,255,0.08);
+    }
+    .status-icon {
+      font-size: 3.5rem;
+      margin-bottom: 20px;
+      display: block;
+    }
+    .status-pill {
+      display: inline-flex; align-items: center; gap: 10px;
+      background: rgba(52,211,153,0.1);
+      border: 1px solid rgba(52,211,153,0.25);
+      border-radius: 100px;
+      padding: 10px 24px;
+      font-size: 1rem; font-weight: 600;
+      color: var(--green);
+      margin-bottom: 28px;
+    }
+    .status-dot {
+      width: 10px; height: 10px; border-radius: 50%;
+      background: var(--green);
+      box-shadow: 0 0 10px var(--green);
+      animation: pulse 2s ease-in-out infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.5; transform: scale(0.8); }
+    }
+    h1 { font-size: 1.6rem; font-weight: 700; letter-spacing: -0.03em; margin-bottom: 8px; }
+    .subtitle { color: var(--muted); font-size: 0.9rem; margin-bottom: 32px; }
+
+    .metrics {
+      display: grid; grid-template-columns: 1fr 1fr;
+      gap: 12px; margin-bottom: 32px;
+    }
+    .metric {
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 14px;
+    }
+    .metric-label { font-size: 0.68rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); margin-bottom: 6px; }
+    .metric-value { font-family: 'JetBrains Mono', monospace; font-size: 0.9rem; font-weight: 500; }
+    .metric-value.ok { color: var(--green); }
+    .metric-value.info { color: var(--accent2); }
+
+    .json-block {
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 14px 18px;
+      text-align: left;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.82rem;
+      line-height: 1.8;
+      color: var(--muted);
+    }
+    .json-block .key { color: var(--accent2); }
+    .json-block .val-str { color: var(--green); }
+    .json-block .bracket { color: var(--muted); }
+
+    footer {
+      position: relative; z-index: 1;
+      border-top: 1px solid var(--border);
+      padding: 20px;
+      text-align: center;
+      color: var(--muted);
+      font-size: 0.75rem;
+    }
+    footer a { color: var(--accent2); text-decoration: none; }
+    footer a:hover { text-decoration: underline; }
+  </style>
+</head>
+<body>
+<div class="blob blob-1"></div>
+<div class="blob blob-2"></div>
+
+<a href="/" class="home-btn">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M19 12H5M12 5l-7 7 7 7"/>
+  </svg>
+  На главную
+</a>
+
+<main class="main">
+  <div class="card">
+    <span class="status-icon">💚</span>
+    <div class="status-pill">
+      <div class="status-dot"></div>
+      Всё работает
+    </div>
+    <h1>Health Check</h1>
+    <p class="subtitle">B2C Virtual Cards API · Arqen Sandbox</p>
+
+    <div class="metrics">
+      <div class="metric">
+        <div class="metric-label">API Status</div>
+        <div class="metric-value ok">● running</div>
+      </div>
+      <div class="metric">
+        <div class="metric-label">Версия</div>
+        <div class="metric-value info">v1.0.0</div>
+      </div>
+      <div class="metric">
+        <div class="metric-label">Framework</div>
+        <div class="metric-value info">FastAPI</div>
+      </div>
+      <div class="metric">
+        <div class="metric-label">Environment</div>
+        <div class="metric-value ok">sandbox</div>
+      </div>
+    </div>
+
+    <div class="json-block">
+      <span class="bracket">{</span><br/>
+      &nbsp;&nbsp;<span class="key">"status"</span>: <span class="val-str">"ok"</span><br/>
+      <span class="bracket">}</span>
+    </div>
+  </div>
+</main>
+
+<footer>
+  <a href="/">← Главная</a> &nbsp;·&nbsp;
+  <a href="/docs">Swagger UI</a> &nbsp;·&nbsp;
+  <a href="/redoc">ReDoc</a>
+</footer>
+</body>
+</html>
