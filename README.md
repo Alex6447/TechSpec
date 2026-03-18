@@ -23,38 +23,33 @@ B2C Telegram-бот для быстрого выпуска и управлени
 
 ## Архитектура
 
-```
-┌─────────────────────────────────────────────────────┐
-│                  Docker Compose                      │
-│                                                     │
-│  ┌──────────────────────────────────────────────┐   │
-│  │              Container: app                   │   │
-│  │                                               │   │
-│  │   ┌─────────────┐     ┌─────────────────┐    │   │
-│  │   │  Aiogram 3  │     │    FastAPI       │    │   │
-│  │   │ (Telegram   │     │  (REST API +     │    │   │
-│  │   │   Bot UI)   │     │   Admin API)     │    │   │
-│  │   └──────┬──────┘     └────────┬────────┘    │   │
-│  │          └──────────┬──────────┘              │   │
-│  │                     ▼                         │   │
-│  │           ┌──────────────────┐                │   │
-│  │           │    B2C Core      │                │   │
-│  │           │  (Business Logic)│                │   │
-│  │           │  - Auth/JWT/JWE  │                │   │
-│  │           │  - Arqen Client  │                │   │
-│  │           │  - Repositories  │                │   │
-│  │           └────────┬─────────┘                │   │
-│  └────────────────────┼───────────────────────────┘  │
-│  ┌─────────────────────▼──────────────────────────┐  │
-│  │         Container: db (PostgreSQL)               │  │
-│  └─────────────────────────────────────────────────┘  │
-└─────────────────────────────────────────────────────┘
-                         │
-                         ▼
-           ┌─────────────────────────┐
-           │  Arqen B2B Platform     │
-           │     (Sandbox)           │
-           └─────────────────────────┘
+```mermaid
+graph TD
+    subgraph Docker_Compose [Docker Compose Environment]
+        subgraph App_Container [Container: b2c-app]
+            direction TB
+            API[FastAPI: REST / Admin]
+            Bot[Aiogram 3: Telegram UI]
+
+            subgraph Core [Business Logic Layer]
+                Auth[Auth: JWT / JWE]
+                Repo[Repositories / DAO]
+                ArqenClient[Arqen SDK Client]
+            end
+
+            API --> Core
+            Bot --> Core
+        end
+
+        DB[(PostgreSQL)]
+        Core -->|SQLAlchemy/Asyncpg| DB
+    end
+
+    subgraph External_Cloud [External Services]
+        Arqen[Arqen B2B Platform Sandbox]
+    end
+
+    ArqenClient -->|mTLS / HTTPS| Arqen
 ```
 
 ---
